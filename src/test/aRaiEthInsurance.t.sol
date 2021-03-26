@@ -4,8 +4,6 @@ pragma experimental ABIEncoderV2;
 import "ds-test/test.sol";
 import "ds-token/token.sol";
 
-import "../math/SafeMath.sol";
-
 import {SAFEEngine} from 'geb/SAFEEngine.sol';
 import {LiquidationEngine} from 'geb/LiquidationEngine.sol';
 import {AccountingEngine} from 'geb/AccountingEngine.sol';
@@ -16,7 +14,7 @@ import {EnglishCollateralAuctionHouse} from 'geb/CollateralAuctionHouse.sol';
 import {GebSafeManager} from "geb-safe-manager/GebSafeManager.sol";
 
 import {SAFESaviourRegistry} from "../SAFESaviourRegistry.sol";
-import {aRaiEthInsurance} from "../saviours/aRaiEthInsurance.sol";
+import {aRaiEthInsurance, SafeMath, WadRayMath} from "../saviours/aRaiEthInsurance.sol";
 
 abstract contract Hevm {
   function warp(uint256) virtual public;
@@ -169,157 +167,29 @@ contract FakeUser {
     }
 }
 
-library Errors{
-    string public constant MATH_MULTIPLICATION_OVERFLOW = '48';
-    string public constant MATH_ADDITION_OVERFLOW = '49';
-    string public constant MATH_DIVISION_BY_ZERO = '50';
-}
-
-library WadRayMath {
-    uint256 internal constant WAD = 1e18;
-    uint256 internal constant halfWAD = WAD / 2;
-
-    uint256 internal constant RAY = 1e27;
-    uint256 internal constant halfRAY = RAY / 2;
-
-    uint256 internal constant WAD_RAY_RATIO = 1e9;
-
-    /**
-    * @return One ray, 1e27
-    **/
-    function ray() internal pure returns (uint256) {
-        return RAY;
-    }
-
-    /**
-    * @return One wad, 1e18
-    **/
-
-    function wad() internal pure returns (uint256) {
-        return WAD;
-    }
-
-    /**
-    * @return Half ray, 1e27/2
-    **/
-    function halfRay() internal pure returns (uint256) {
-        return halfRAY;
-    }
-
-    /**
-    * @return Half ray, 1e18/2
-    **/
-    function halfWad() internal pure returns (uint256) {
-        return halfWAD;
-    }
-
-    /**
-    * @dev Multiplies two wad, rounding half up to the nearest wad
-    * @param a Wad
-    * @param b Wad
-    * @return The result of a*b, in wad
-    **/
-    function wadMul(uint256 a, uint256 b) internal pure returns (uint256) {
-        if (a == 0 || b == 0) {
-        return 0;
-        }
-
-        require(a <= (uint256(-1) - halfWAD) / b, Errors.MATH_MULTIPLICATION_OVERFLOW);
-
-        return (a * b + halfWAD) / WAD;
-    }
-
-    /**
-    * @dev Divides two wad, rounding half up to the nearest wad
-    * @param a Wad
-    * @param b Wad
-    * @return The result of a/b, in wad
-    **/
-    function wadDiv(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b != 0, Errors.MATH_DIVISION_BY_ZERO);
-        uint256 halfB = b / 2;
-
-        require(a <= (uint256(-1) - halfB) / WAD, Errors.MATH_MULTIPLICATION_OVERFLOW);
-
-        return (a * WAD + halfB) / b;
-    }
-
-    /**
-    * @dev Multiplies two ray, rounding half up to the nearest ray
-    * @param a Ray
-    * @param b Ray
-    * @return The result of a*b, in ray
-    **/
-    function rayMul(uint256 a, uint256 b) internal pure returns (uint256) {
-        if (a == 0 || b == 0) {
-        return 0;
-        }
-
-        require(a <= (uint256(-1) - halfRAY) / b, Errors.MATH_MULTIPLICATION_OVERFLOW);
-
-        return (a * b + halfRAY) / RAY;
-    }
-
-    /**
-    * @dev Divides two ray, rounding half up to the nearest ray
-    * @param a Ray
-    * @param b Ray
-    * @return The result of a/b, in ray
-    **/
-    function rayDiv(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b != 0, Errors.MATH_DIVISION_BY_ZERO);
-        uint256 halfB = b / 2;
-
-        require(a <= (uint256(-1) - halfB) / RAY, Errors.MATH_MULTIPLICATION_OVERFLOW);
-
-        return (a * RAY + halfB) / b;
-    }
-
-    /**
-    * @dev Casts ray down to wad
-    * @param a Ray
-    * @return a casted to wad, rounded half up to the nearest wad
-    **/
-    function rayToWad(uint256 a) internal pure returns (uint256) {
-        uint256 halfRatio = WAD_RAY_RATIO / 2;
-        uint256 result = halfRatio + a;
-        require(result >= halfRatio, Errors.MATH_ADDITION_OVERFLOW);
-
-        return result / WAD_RAY_RATIO;
-    }
-
-    /**
-    * @dev Converts wad up to ray
-    * @param a Wad
-    * @return a converted in ray
-    **/
-    function wadToRay(uint256 a) internal pure returns (uint256) {
-        uint256 result = a * WAD_RAY_RATIO;
-        require(result / WAD_RAY_RATIO == a, Errors.MATH_MULTIPLICATION_OVERFLOW);
-        return result;
-    }
-}
-
 contract LendingPool{
+
+    constructor() public{
+
+    }
     
       function getReserveNormalizedIncome(address asset) external view returns (uint256){
-          return 1;
+          return 10**27;
       }
 }
 
-contract AToken is SafeMath{
-
-    using WadRayMath for uint256;
-
-    uint256 WAD = 10**18;
+contract AToken is SafeMath, WadRayMath{
 
     mapping (address => uint) internal balances;
 
-    address public UNDERLYING_ASSET_ADDRESS = address(0);
-    LendingPool POOL;
+    mapping (address => mapping(address => uint)) approvals;
 
-    constructor(address poolAddress) public {
-        POOL = LendingPool(poolAddress);
+    LendingPool public POOL;
+
+    address public UNDERLYING_ASSET_ADDRESS = address(0);
+
+    constructor(address lendingPool) public {
+        POOL = LendingPool(lendingPool);
     }
 
     function mint(address owner) external payable{
@@ -336,11 +206,24 @@ contract AToken is SafeMath{
         return balances[owner];
     }
 
-    function withdrawUnderlying(uint aTokenAmount, address payable owner) external{
-        require(balances[owner] >= aTokenAmount, "Insufficient Balance");
-        balances[owner] = sub(balances[owner], aTokenAmount);
-        owner.transfer(aTokenAmount);
+    function withdrawUnderlying(uint aTokenAmount, address owner, address payable to) external{
+        uint256 amountToTransfer = aTokenAmount;
+        if(amountToTransfer >= balances[owner]){
+            amountToTransfer = balances[owner];
+        }
+
+        if(msg.sender != owner){
+            require(approvals[owner][msg.sender] >= amountToTransfer, "Spender not authorized");
+        }
+
+        balances[owner] = sub(balances[owner], amountToTransfer);
+        to.transfer(amountToTransfer);
     }
+
+    function approve(address spender, uint256 value) external{
+        approvals[msg.sender][spender] = value;
+    }
+
 
 }
 
@@ -404,8 +287,6 @@ contract WETH9_ {
 
 contract WETHGateway {
 
-    using WadRayMath for uint256;
-
     AToken aToken;
 
     constructor(address aTokenAddress)public {
@@ -431,16 +312,14 @@ contract WETHGateway {
         uint256 amount,
         address payable onBehalfOf
     )external {
-        aToken.withdrawUnderlying(amount, onBehalfOf);
+        aToken.withdrawUnderlying(amount, msg.sender, onBehalfOf);
     }
 
 }
 
 
-contract aRaiEthInsuranceTest is DSTest, SafeMath {
+contract aRaiEthInsuranceTest is DSTest, SafeMath, WadRayMath {
     Hevm hevm;
-    using WadRayMath for uint256;
-
     TestSAFEEngine safeEngine;
     TestAccountingEngine accountingEngine;
     LiquidationEngine liquidationEngine;
@@ -473,7 +352,6 @@ contract aRaiEthInsuranceTest is DSTest, SafeMath {
     uint256 minKeeperPayoutValue = 0.01 ether;
     uint256 payoutToSAFESize = 40;
     uint256 defaultDesiredCollateralizationRatio = 300;
-    uint256 WAD = 10**18;
 
     function ray(uint wad) internal pure returns (uint) {
         return wad * 10 ** 9;
@@ -485,7 +363,7 @@ contract aRaiEthInsuranceTest is DSTest, SafeMath {
     fallback() external payable {}
 
     function getScaledBalance(uint amount) internal returns(uint256){
-        return amount.rayMul(pool.getReserveNormalizedIncome(aEth.UNDERLYING_ASSET_ADDRESS()));
+        return rayMul(amount, pool.getReserveNormalizedIncome(aEth.UNDERLYING_ASSET_ADDRESS()));
     }
 
     // Default actions/scenarios
@@ -719,7 +597,7 @@ contract aRaiEthInsuranceTest is DSTest, SafeMath {
 
         alice.doWithdraw(saviour, safe, 100 ether);
         assertEq(aEth.balanceOf(address(saviour)), 400 ether);
-        assertEq(saviour.collateralCover(safeHandler), getScaledBalance(400 ether));
+        assertEq(saviour.collateralCover(safeHandler), 400 ether);
 
         alice.doWithdraw(saviour, safe, 400 ether);
         assertEq(aEth.balanceOf(address(saviour)), 0);

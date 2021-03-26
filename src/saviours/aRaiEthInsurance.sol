@@ -1,16 +1,12 @@
-/**
- *Submitted for verification at Etherscan.io on 2021-03-25
-*/
-
 pragma solidity ^0.6.7;
 
-library Errors{
+
+contract WadRayMath {
+
     string public constant MATH_MULTIPLICATION_OVERFLOW = '48';
     string public constant MATH_ADDITION_OVERFLOW = '49';
     string public constant MATH_DIVISION_BY_ZERO = '50';
-}
 
-library WadRayMath {
     uint256 internal constant WAD = 1e18;
     uint256 internal constant halfWAD = WAD / 2;
 
@@ -59,7 +55,7 @@ library WadRayMath {
         return 0;
         }
 
-        require(a <= (uint256(-1) - halfWAD) / b, Errors.MATH_MULTIPLICATION_OVERFLOW);
+        require(a <= (uint256(-1) - halfWAD) / b, MATH_MULTIPLICATION_OVERFLOW);
 
         return (a * b + halfWAD) / WAD;
     }
@@ -71,10 +67,10 @@ library WadRayMath {
     * @return The result of a/b, in wad
     **/
     function wadDiv(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b != 0, Errors.MATH_DIVISION_BY_ZERO);
+        require(b != 0, MATH_DIVISION_BY_ZERO);
         uint256 halfB = b / 2;
 
-        require(a <= (uint256(-1) - halfB) / WAD, Errors.MATH_MULTIPLICATION_OVERFLOW);
+        require(a <= (uint256(-1) - halfB) / WAD, MATH_MULTIPLICATION_OVERFLOW);
 
         return (a * WAD + halfB) / b;
     }
@@ -90,7 +86,7 @@ library WadRayMath {
         return 0;
         }
 
-        require(a <= (uint256(-1) - halfRAY) / b, Errors.MATH_MULTIPLICATION_OVERFLOW);
+        require(a <= (uint256(-1) - halfRAY) / b, MATH_MULTIPLICATION_OVERFLOW);
 
         return (a * b + halfRAY) / RAY;
     }
@@ -102,10 +98,10 @@ library WadRayMath {
     * @return The result of a/b, in ray
     **/
     function rayDiv(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b != 0, Errors.MATH_DIVISION_BY_ZERO);
+        require(b != 0, MATH_DIVISION_BY_ZERO);
         uint256 halfB = b / 2;
 
-        require(a <= (uint256(-1) - halfB) / RAY, Errors.MATH_MULTIPLICATION_OVERFLOW);
+        require(a <= (uint256(-1) - halfB) / RAY, MATH_MULTIPLICATION_OVERFLOW);
 
         return (a * RAY + halfB) / b;
     }
@@ -118,7 +114,7 @@ library WadRayMath {
     function rayToWad(uint256 a) internal pure returns (uint256) {
         uint256 halfRatio = WAD_RAY_RATIO / 2;
         uint256 result = halfRatio + a;
-        require(result >= halfRatio, Errors.MATH_ADDITION_OVERFLOW);
+        require(result >= halfRatio, MATH_ADDITION_OVERFLOW);
 
         return result / WAD_RAY_RATIO;
     }
@@ -130,7 +126,7 @@ library WadRayMath {
     **/
     function wadToRay(uint256 a) internal pure returns (uint256) {
         uint256 result = a * WAD_RAY_RATIO;
-        require(result / WAD_RAY_RATIO == a, Errors.MATH_MULTIPLICATION_OVERFLOW);
+        require(result / WAD_RAY_RATIO == a, MATH_MULTIPLICATION_OVERFLOW);
         return result;
     }
 }
@@ -445,9 +441,8 @@ interface IERC20{
     function balanceOf(address) external returns (uint256); 
 }
 
-contract aRaiEthInsurance is SafeMath, ReentrancyGuard {
+contract aRaiEthInsurance is SafeMath, WadRayMath, ReentrancyGuard {
     
-    using WadRayMath for uint256;
     
     // Checks whether a saviour contract has been approved by governance in the LiquidationEngine
     modifier liquidationEngineApproved(address saviour) {
@@ -505,8 +500,6 @@ contract aRaiEthInsurance is SafeMath, ReentrancyGuard {
     uint256 public constant THOUSAND          = 1000;
     uint256 public constant CRATIO_SCALE_DOWN = 10**25;
     uint256 public constant WAD_COMPLEMENT    = 10**9;
-    uint256 public constant WAD               = 10**18;
-    uint256 public constant RAY               = 10**27;
     uint256 public constant MAX_CRATIO        = 1000;
     uint256 public constant MAX_UINT          = uint(-1);
 
@@ -577,7 +570,7 @@ contract aRaiEthInsurance is SafeMath, ReentrancyGuard {
     
     
     function collateralCover(address safeHandler) virtual view public returns(uint256) {
-        return aTokenPrincipalBalance[safeHandler].rayMul(POOL.getReserveNormalizedIncome(aToken.UNDERLYING_ASSET_ADDRESS())); 
+        return rayMul(aTokenPrincipalBalance[safeHandler], POOL.getReserveNormalizedIncome(aToken.UNDERLYING_ASSET_ADDRESS())); 
     }
 
     function getKeeperPayoutValue() virtual view public returns (uint256){

@@ -318,7 +318,7 @@ contract AToken is SafeMath{
     address public UNDERLYING_ASSET_ADDRESS = address(0);
     LendingPool POOL;
 
-    constructor(address poolAddress){
+    constructor(address poolAddress) public {
         POOL = LendingPool(poolAddress);
     }
 
@@ -336,7 +336,7 @@ contract AToken is SafeMath{
         return balances[owner];
     }
 
-    function withdrawUnderlying(uint aTokenAmount, address payable owner){
+    function withdrawUnderlying(uint aTokenAmount, address payable owner) external{
         require(balances[owner] >= aTokenAmount, "Insufficient Balance");
         balances[owner] = sub(balances[owner], aTokenAmount);
         owner.transfer(aTokenAmount);
@@ -408,7 +408,7 @@ contract WETHGateway {
 
     AToken aToken;
 
-    constructor(address aTokenAddress){
+    constructor(address aTokenAddress)public {
         aToken = AToken(aTokenAddress);
     }
 
@@ -430,7 +430,7 @@ contract WETHGateway {
         address lendingPool,
         uint256 amount,
         address payable onBehalfOf
-    ){
+    )external {
         aToken.withdrawUnderlying(amount, onBehalfOf);
     }
 
